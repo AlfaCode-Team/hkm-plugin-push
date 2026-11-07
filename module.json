@@ -1,0 +1,21 @@
+{
+    "name": "push",
+    "version": "0.1.0",
+    "kernel": "^1.19.0",
+    "solves": "push.notifications",
+    "type": "module",
+    "requires": [
+        "database.management",
+        "logging.application",
+        "http.client"
+    ],
+    "exposes": [
+        "Plugins\\Push\\API\\Contracts\\PushServiceContract"
+    ],
+    "routes": [],
+    "emits": [],
+    "listens": [],
+    "files": [],
+    "documentation": "Device-token registration and push delivery (FCM), with per-recipient fan-out and a delivery outbox.",
+    "config": []
+}

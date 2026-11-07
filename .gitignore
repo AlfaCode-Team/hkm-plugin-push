@@ -1,0 +1,15 @@
+/vendor/
+composer.lock
+.phpunit.cache/
+.phpunit.result.cache
+.DS_Store
+
+# AI assistant context — kept local, not shipped to GitHub
+CLAUDE.md
+
+# ── Local test harness (`hkm ground init`) ──────────────────────────
+# Machine-specific, regenerable, and some of it holds credentials.
+composer.local.json
+composer.local.lock
+ground.databases.json
+docker-compose.ground.yml

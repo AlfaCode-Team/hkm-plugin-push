@@ -1,21 +1,85 @@
 {
     "name": "push",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "kernel": "^1.19.0",
     "solves": "push.notifications",
     "type": "module",
+
     "requires": [
         "database.management",
         "logging.application",
         "http.client"
     ],
+
     "exposes": [
         "Plugins\\Push\\API\\Contracts\\PushServiceContract"
     ],
+
     "routes": [],
-    "emits": [],
+
+    "emits": [
+        "push.token_invalidated"
+    ],
+
     "listens": [],
     "files": [],
-    "documentation": "Device-token registration and push delivery (FCM), with per-recipient fan-out and a delivery outbox.",
-    "config": []
+
+    "commands": [
+        {
+            "name": "push:status",
+            "handler": "Plugins\\Push\\Infrastructure\\Cli\\PushStatusCommand"
+        },
+        {
+            "name": "push:send",
+            "handler": "Plugins\\Push\\Infrastructure\\Cli\\PushSendCommand"
+        },
+        {
+            "name": "push:drain",
+            "handler": "Plugins\\Push\\Infrastructure\\Cli\\PushDrainCommand"
+        }
+    ],
+
+    "jobs": [
+        {
+            "name": "push.deliver",
+            "handler": "Plugins\\Push\\Infrastructure\\Jobs\\DeliverPushJob",
+            "queue": "push",
+            "timeout": 60,
+            "retry": { "max": 1, "strategy": "fixed", "base": 1 }
+        }
+    ],
+
+    "documentation": "Device-token registration and push delivery over APNs (HTTP/2, ES256 provider tokens) and FCM HTTP v1 (RS256 service-account tokens), with per-recipient fan-out, a delivery outbox and automatic pruning of tokens the provider reports dead.",
+
+    "//retry": "max 1 on purpose. The OUTBOX owns retries, because it is the only place that knows whether a row was already delivered; a job-level retry would re-POST a notification the provider may already have accepted, and a duplicate push cannot be taken back.",
+
+    "config": [
+        { "key": "PUSH_ENABLED", "type": "bool", "required": false, "default": true },
+
+        { "key": "PUSH_FCM_ENABLED", "type": "bool", "required": false, "default": false },
+        { "key": "PUSH_FCM_PROJECT_ID", "type": "string", "required": false },
+        { "key": "PUSH_FCM_CREDENTIALS", "type": "string", "required": false },
+        { "key": "PUSH_FCM_ENDPOINT", "type": "string", "required": false, "default": "https://fcm.googleapis.com" },
+        { "key": "PUSH_FCM_OAUTH_ENDPOINT", "type": "string", "required": false, "default": "https://oauth2.googleapis.com/token" },
+
+        { "key": "PUSH_APNS_ENABLED", "type": "bool", "required": false, "default": false },
+        { "key": "PUSH_APNS_KEY_ID", "type": "string", "required": false },
+        { "key": "PUSH_APNS_TEAM_ID", "type": "string", "required": false },
+        { "key": "PUSH_APNS_KEY", "type": "string", "required": false },
+        { "key": "PUSH_APNS_TOPIC", "type": "string", "required": false },
+        { "key": "PUSH_APNS_ENVIRONMENT", "type": "string", "required": false, "default": "production" },
+        { "key": "PUSH_APNS_ENDPOINT", "type": "string", "required": false },
+        { "key": "PUSH_APNS_PORT", "type": "int", "required": false, "default": 443 },
+
+        { "key": "PUSH_TIMEOUT", "type": "int", "required": false, "default": 10 },
+        { "key": "PUSH_CONNECT_TIMEOUT", "type": "int", "required": false, "default": 5 },
+        { "key": "PUSH_DRY_RUN", "type": "bool", "required": false, "default": false },
+        { "key": "PUSH_OUTBOX_BATCH", "type": "int", "required": false, "default": 100 },
+        { "key": "PUSH_OUTBOX_MAX_ATTEMPTS", "type": "int", "required": false, "default": 5 },
+        { "key": "PUSH_PRUNE_AFTER_DAYS", "type": "int", "required": false, "default": 30 }
+    ],
+
+    "//config": "Every APNs and FCM credential is `required: false` WITH NO DEFAULT, which seeds a project's .env with `# KEY=` — commented out. That spelling is deliberate and was got wrong first: a BARE STRING entry means required-with-no-default, which writes an ACTIVE `KEY=`, and ValidateConfigStage counts '' as missing — so the boot of every project using FCM alone would stop on the unset APNs keys. `ground probe` is what caught it. ValidateConfigStage is static and cannot know that PUSH_APNS_* only matters when PUSH_APNS_ENABLED is true, so the check belongs where the decision is known: PushConfig::assertApnsUsable() and assertFcmUsable() refuse a half-configured provider and name the absent key.",
+
+    "//no-token-ttl-knob": "There is deliberately no setting for the provider-token lifetime. Apple states the window: 'Refresh your token no more than once every 20 minutes and no less than once every 60 minutes.' A knob here has one correct range and two ways to earn a 429 TooManyProviderTokenUpdates, so the value is derived from the spec and not offered."
 }

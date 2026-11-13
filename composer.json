@@ -1,10 +1,15 @@
 {
     "name": "alfacode-team/hkm-plugin-push",
-    "description": "Device-token registration and push delivery (FCM), with per-recipient fan-out and a delivery outbox.",
+    "description": "Device-token registration and push delivery over APNs and FCM HTTP v1, with a delivery outbox and automatic pruning of dead tokens.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=8.4"
+        "php": ">=8.4",
+        "ext-openssl": "*",
+        "ext-json": "*"
+    },
+    "suggest": {
+        "ext-curl": "Needed by the HttpClient plugin, and it must be built with nghttp2: Apple requires HTTP/2 and refuses HTTP/1.1."
     },
     "autoload": {
         "psr-4": {
@@ -17,8 +22,10 @@
         }
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^11.0",
+        "firebase/php-jwt": "^7.0"
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "//require-dev": "firebase/php-jwt is a TEST dependency only, used as an independent oracle: tokens are signed by this plugin's own Domain/Jwt and verified by a library we did not write. Signing in production needs nothing but ext-openssl, so no project has to install it."
 }
